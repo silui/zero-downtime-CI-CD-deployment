@@ -4,34 +4,82 @@ provider "aws" {
 
 resource "aws_instance" "server-1a" {
   count = 2
-  ami           = "ami-693d4009"
-  instance_type = "t2.micro"
-  subnet_id = "${aws_subnet.private_us1a.id}"
+  ami           = "ami-0799ad445b5727125"
+  instance_type = "t2.medium"
+  subnet_id = "${aws_subnet.public_us1a.id}"
   key_name = "Edward-IAM-keypair"
   vpc_security_group_ids = ["${aws_security_group.ssh_ping.id}","${aws_security_group.website.id}"]
-  user_data= "#!/bin/bash\nsudo -s\napt-get update\napt-get -y install nginx\nMYIP=`ifconfig | grep 'addr:10' | awk '{ print $2 }' | cut -d ':' -f2`\necho 'this is: '$MYIP > /var/www/html/index.html\necho chicken\nnginx"
+  user_data="#!/bin/bash\nyum update -y\nyum install git httpd mod_ssl -y\ngit clone https://github.com/silui/codedeploy-sample.git\napachectl start\ncp ./codedeploy-sample/index.html /var/www/html/index.html"
+#   user_data="#!/bin/bash\nyum update\nyum install git -y\ncd /home/ec2-user\ngit clone https://github.com/silui/codedeploy-sample.git\ncd codedeploy-sample\npython -m SimpleHTTPServer 80"
+  iam_instance_profile = "${aws_iam_instance_profile.main.name}"
+#   user_data= "#!/bin/bash\nsudo -s\napt-get update\napt-get -y install nginx\nMYIP=`ifconfig | grep 'addr:10' | awk '{ print $2 }' | cut -d ':' -f2`\necho 'this is: '$MYIP > /var/www/html/index.html\nnginx"
 #   associate_public_ip_address = "false"
+tags{
+    Name = "dumbServer-${count.index}"
+}
 }
 
+resource "aws_iam_role_policy_attachment" "codedeploy_service" {
+  role       = "${aws_iam_role.codedeploy_service.name}"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRole"
+}
 
+# create a service role for ec2 
+resource "aws_iam_role" "instance_profile" {
+  name = "codedeploy-instance-profile"
 
-# resource "aws_instance" "server-1c" {
-#   ami           = "ami-693d4009"
-#   instance_type = "t2.micro"
-#   subnet_id = "${aws_subnet.public_us1c.id}"
-#   key_name = "Edward-IAM-keypair"
-#   vpc_security_group_ids = ["${aws_security_group.ssh_ping.id}","${aws_security_group.website.id}"]
-#   user_data= "#!/bin/bash\nsudo -s\napt-get update\napt-get -y install nginx\nMYIP=`ifconfig | grep 'addr:10' | awk '{ print $2 }' | cut -d ':' -f2`\necho 'this is: '$MYIP > /var/www/html/index.html\necho chicken\nnginx"
-# }
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": [
+          "ec2.amazonaws.com"
+        ]
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
 
-# resource "aws_instance" "jenkin-server" {
-#   ami           = "ami-693d4009"
-#   instance_type = "t2.micro"
-#   subnet_id = "${aws_subnet.public_us1c.id}"
-#   key_name = "Edward-IAM-keypair"
-#   vpc_security_group_ids = ["${aws_security_group.ssh_ping.id}","${aws_security_group.website.id}"]
-# #   user_data= "#!/bin/bash\nsudo -s\napt-get update\napt-get -y install nginx\nMYIP=`ifconfig | grep 'addr:10' | awk '{ print $2 }' | cut -d ':' -f2`\necho 'this is: '$MYIP > /var/www/html/index.html\necho chicken\nnginx"
-# }
+# provide ec2 access to s3 bucket to download revision. This role is needed by the CodeDeploy agent on EC2 instances.
+resource "aws_iam_role_policy_attachment" "instance_profile_codedeploy" {
+  role       = "${aws_iam_role.instance_profile.name}"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforAWSCodeDeploy"
+}
+
+resource "aws_iam_instance_profile" "main" {
+  name = "codedeploy-instance-profile"
+  role = "${aws_iam_role.instance_profile.name}"
+}
+
+resource "aws_iam_role" "codedeploy_service" {
+  name = "codedeploy-service-role"
+
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": [
+          "codedeploy.amazonaws.com"
+        ]
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+}
+
 
 
 #---------a bunch of networking nonsence starts here-----0-------
@@ -66,31 +114,31 @@ resource "aws_route_table_association" "main-public-1-a" {
     route_table_id = "${aws_route_table.main-public.id}"
 }
 
-resource "aws_route_table" "main-private" {
-    vpc_id = "${aws_vpc.main.id}"
-    route {
-        cidr_block = "0.0.0.0/0"
-        nat_gateway_id = "${aws_nat_gateway.nat.id}"
-    }
-    tags {
-        Name = "main-private-1"
-    }
-}
+# resource "aws_route_table" "main-private" {
+#     vpc_id = "${aws_vpc.main.id}"
+#     route {
+#         cidr_block = "0.0.0.0/0"
+#         nat_gateway_id = "${aws_nat_gateway.nat.id}"
+#     }
+#     tags {
+#         Name = "main-private-1"
+#     }
+# }
 
-resource "aws_eip" "nat_eip" {
-  vpc = true
-}
+# resource "aws_eip" "nat_eip" {
+#   vpc = true
+# }
 
-/* NAT */
-resource "aws_nat_gateway" "nat" {
-  allocation_id = "${aws_eip.nat_eip.id}"
-  subnet_id     = "${aws_subnet.public_us1a.id}"
-}
+# /* NAT */
+# resource "aws_nat_gateway" "nat" {
+#   allocation_id = "${aws_eip.nat_eip.id}"
+#   subnet_id     = "${aws_subnet.public_us1a.id}"
+# }
 
-resource "aws_route_table_association" "main-private-1-a" {
-    subnet_id = "${aws_subnet.private_us1a.id}"
-    route_table_id = "${aws_route_table.main-private.id}"
-}
+# resource "aws_route_table_association" "main-private-1-a" {
+#     subnet_id = "${aws_subnet.private_us1a.id}"
+#     route_table_id = "${aws_route_table.main-private.id}"
+# }
 
 
 
@@ -110,22 +158,21 @@ resource "aws_subnet" "public_us1a" {
     }
 }
 
-resource "aws_subnet" "private_us1a" {
-    cidr_block = "10.0.3.0/24"
-  availability_zone = "${var.AWS_REGION}a"
-    vpc_id = "${aws_vpc.main.id}"
-    map_public_ip_on_launch = "false"
-    tags {
-        Name = "vpcpg subnet for ${var.AWS_REGION}a"
-    }
-}
+# resource "aws_subnet" "private_us1a" {
+#     cidr_block = "10.0.3.0/24"
+#   availability_zone = "${var.AWS_REGION}a"
+#     vpc_id = "${aws_vpc.main.id}"
+#     map_public_ip_on_launch = "false"
+#     tags {
+#         Name = "vpcpg subnet for ${var.AWS_REGION}a"
+#     }
+# }
 
 # resource "aws_subnet" "public_us1c" {
 #     cidr_block = "10.0.2.0/24"
 #   availability_zone = "${var.AWS_REGION}c"
 #     vpc_id = "${aws_vpc.main.id}"
 #     map_public_ip_on_launch = "true"
-#     # map_public_ip_on_launch = "false"
 #     tags {
 #         Name = "vpcpg subnet for ${var.AWS_REGION}c"
 #     }
