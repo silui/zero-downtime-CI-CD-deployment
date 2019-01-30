@@ -1,0 +1,15 @@
+version: '3.0'
+
+services:
+  custom_django:
+    build: .
+    environment:
+      - wai=${wai}
+    command: python ./cowork_space/manage.py runserver 0:8000
+    ports:
+      - "80:8000"
+      - "3000:3000"
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./code:/code

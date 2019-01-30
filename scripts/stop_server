@@ -1,0 +1,2 @@
+cd /codedeploy-sample/cowork_space
+docker-compose down
