@@ -13,9 +13,7 @@ resource "aws_launch_configuration" "django-launch-config" {
   sudo curl http://169.254.169.254/latest/meta-data/instance-id >> /etc/environment  
   echo $wai
   sudo systemctl start docker
-  git clone --recurse-submodules -j8 https://github.com/silui/codedeploy-sample.git
-  cd codedeploy-sample/
-  git submodule update --remote --merge
+  git clone https://github.com/silui/zero-downtime-CI-CD-deployment.git
   cd cowork_space
   sudo docker-compose up -d --build
   EOF
@@ -47,20 +45,26 @@ resource "aws_autoscaling_group" "example-autoscaling" {
   ]
 }
 
-# resource "aws_instance" "server-1a" {
-#   count = 4
-#   ami           = "ami-08c3fac0de21367fc"
-#   instance_type = "t2.medium"
-#   subnet_id = "${aws_subnet.public_us1a.id}"
-#   key_name = "Edward-IAM-keypair"
-#   vpc_security_group_ids = ["${aws_security_group.ssh_ping.id}","${aws_security_group.website.id}"]
-#   user_data="#!/bin/bash\necho \"wai=dumbServer-${aws_subnet.public_us1a.availability_zone}-${count.index}\">/etc/environment\nsource /etc/environment\nsudo systemctl start docker\ngit clone --recurse-submodules -j8 https://github.com/silui/codedeploy-sample.git\n cd codedeploy-sample/\ngit submodule update --remote --merge\ncd cowork_space\necho $wai\nsudo docker-compose up -d --build"
-#   iam_instance_profile = "${aws_iam_instance_profile.main.name}"
-# tags{
-#     Name = "dumbServer-${aws_subnet.public_us1a.availability_zone}-${count.index}"
-#     Production = "true"
-#  }
-# }
+resource "aws_instance" "server-1a" {
+  count = 1
+  ami           = "ami-08c3fac0de21367fc"
+  instance_type = "t2.medium"
+  subnet_id = "${aws_subnet.public_us1a.id}"
+  key_name = "Edward-IAM-keypair"
+  vpc_security_group_ids = ["${aws_security_group.ssh_ping.id}","${aws_security_group.website.id}"]
+  user_data=<<-EOF
+  #!/bin/bash
+  sudo echo -n "wai=" > /etc/environment
+  sudo curl http://169.254.169.254/latest/meta-data/instance-id >> /etc/environment  
+  echo $wai
+  sudo systemctl start docker
+  docker run -p 8080:8080 -p 50000:50000 jenkins/jenkins:lts
+  EOF
+  iam_instance_profile = "${aws_iam_instance_profile.main.name}"
+tags{
+    Name = "jenkins-server"
+ }
+}
 
 
 resource "aws_iam_role_policy_attachment" "instance_profile_codedeploy" {
