@@ -10,11 +10,12 @@ resource "aws_launch_configuration" "django-launch-config" {
   user_data=<<-EOF
   #!/bin/bash
   sudo echo -n "wai=" > /etc/environment
-  sudo curl http://169.254.169.254/latest/meta-data/instance-id >> /etc/environment  
+  sudo curl http://169.254.169.254/latest/meta-data/instance-id >> /etc/environment
+  source /etc/environment
   echo $wai
   sudo systemctl start docker
   git clone https://github.com/silui/zero-downtime-CI-CD-deployment.git
-  cd cowork_space
+  cd zero-downtime-CI-CD-deployment/cowork_space
   sudo docker-compose up -d --build
   EOF
   iam_instance_profile = "${aws_iam_instance_profile.main.name}"
@@ -27,6 +28,8 @@ resource "aws_autoscaling_group" "example-autoscaling" {
   launch_configuration = "${aws_launch_configuration.django-launch-config.name}"
   min_size             = 2
   max_size             = 8
+  desired_capacity     = 2
+  termination_policies = ["NewestInstance"]
   health_check_grace_period = 100
   health_check_type = "ELB"
   load_balancers = ["${aws_elb.stupid-elb.name}"]
@@ -45,28 +48,63 @@ resource "aws_autoscaling_group" "example-autoscaling" {
   ]
 }
 
-resource "aws_instance" "server-1a" {
-  count = 1
-  ami           = "ami-08c3fac0de21367fc"
+# resource "aws_cloudwatch_metric_alarm" "CPU_hog" {
+#   alarm_name          = "production_cpu_hog"
+#   comparison_operator = "GreaterThanOrEqualToThreshold"
+#   evaluation_periods  = "2"
+#   metric_name         = "CPUUtilization"
+#   namespace           = "AWS/EC2"
+#   period              = "120"
+#   statistic           = "Average"
+#   threshold           = "50"
+
+#   dimensions = {
+#     AutoScalingGroupName = "${aws_autoscaling_group.example-autoscaling.name}"
+#   }
+
+#   alarm_description = "This metric monitors ec2 cpu utilization"
+#   alarm_actions     = ["${aws_autoscaling_policy.example-autoscaling.arn}"]
+# }
+
+resource "aws_instance" "jenkins_server" {
+  ami           = "ami-05611ae044b2c20ef"
   instance_type = "t2.medium"
   subnet_id = "${aws_subnet.public_us1a.id}"
   key_name = "Edward-IAM-keypair"
   vpc_security_group_ids = ["${aws_security_group.ssh_ping.id}","${aws_security_group.website.id}"]
   user_data=<<-EOF
   #!/bin/bash
-  sudo echo -n "wai=" > /etc/environment
-  sudo curl http://169.254.169.254/latest/meta-data/instance-id >> /etc/environment  
-  echo $wai
   sudo systemctl start docker
-  docker run -p 8080:8080 -p 50000:50000 jenkins/jenkins:lts
+  sudo usermod -a -G docker ec2-user
+  sudo service jenkins start
+  sudo gpasswd -a jenkins docker
   EOF
   iam_instance_profile = "${aws_iam_instance_profile.main.name}"
 tags{
     Name = "jenkins-server"
  }
+
 }
 
-
+# resource "aws_instance" "jenkins_slave" {
+#   ami           = "ami-08c3fac0de21367fc"
+#   instance_type = "t2.medium"
+#   subnet_id = "${aws_subnet.public_us1a.id}"
+#   key_name = "Edward-IAM-keypair"
+#   vpc_security_group_ids = ["${aws_security_group.ssh_ping.id}","${aws_security_group.website.id}"]
+#   user_data=<<-EOF
+#   #!/bin/bash
+#   sudo systemctl start docker
+#   EOF
+#   iam_instance_profile = "${aws_iam_instance_profile.main.name}"
+# tags{
+#     Name = "jenkins-slave"
+#  }
+# }
+resource "aws_eip" "lb" {
+  instance = "${aws_instance.jenkins_server.id}"
+  vpc      = true
+}
 resource "aws_iam_role_policy_attachment" "instance_profile_codedeploy" {
   role       = "${aws_iam_role.instance_profile.name}"
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforAWSCodeDeploy"
@@ -94,11 +132,11 @@ resource "aws_security_group" "ssh_ping" {
       to_port = 22
       protocol = "tcp"
       cidr_blocks = ["0.0.0.0/0"]
-  } 
+  }
 
     ingress {
     from_port = 8
-    to_port = 0 
+    to_port = 0
     protocol = "icmp"
     cidr_blocks = ["0.0.0.0/0"]
     }
@@ -122,7 +160,19 @@ resource "aws_security_group" "website"{
         from_port = 80
         to_port = 80
         protocol="tcp"
-        cidr_blocks = ["0.0.0.0/0"]        
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+    ingress{
+        from_port = 8080
+        to_port = 8080
+        protocol="tcp"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+    ingress{
+        from_port = 8000
+        to_port = 8000
+        protocol="tcp"
+        cidr_blocks = ["0.0.0.0/0"]
     }
     tags{Name="website"}
 }
@@ -146,8 +196,8 @@ resource "aws_security_group" "elb-securitygroup" {
       to_port = 80
       protocol = "tcp"
       cidr_blocks = ["0.0.0.0/0"]
-  } 
-  
+  }
+
   tags {
     Name = "elb_sg"
   }
