@@ -1,4 +1,4 @@
-cd /zero-downtime-CI-CD-deployments
+cd /zero-downtime-CI-CD-deployment
 git fetch origin master
 git reset --hard FETCH_HEAD
 cd cowork_spaces
