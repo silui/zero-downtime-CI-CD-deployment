@@ -1,7 +1,7 @@
 cd /zero-downtime-CI-CD-deployment
 git fetch origin master
 git reset --hard FETCH_HEAD
-cd cowork_spaces
+cd cowork_space
 source /etc/environment
 echo $wai
 cp /etc/environment ./.env
