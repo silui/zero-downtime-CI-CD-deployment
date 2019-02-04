@@ -83,24 +83,8 @@ resource "aws_instance" "jenkins_server" {
 tags{
     Name = "jenkins-server"
  }
-
 }
 
-# resource "aws_instance" "jenkins_slave" {
-#   ami           = "ami-08c3fac0de21367fc"
-#   instance_type = "t2.medium"
-#   subnet_id = "${aws_subnet.public_us1a.id}"
-#   key_name = "Edward-IAM-keypair"
-#   vpc_security_group_ids = ["${aws_security_group.ssh_ping.id}","${aws_security_group.website.id}"]
-#   user_data=<<-EOF
-#   #!/bin/bash
-#   sudo systemctl start docker
-#   EOF
-#   iam_instance_profile = "${aws_iam_instance_profile.main.name}"
-# tags{
-#     Name = "jenkins-slave"
-#  }
-# }
 resource "aws_eip" "lb" {
   instance = "${aws_instance.jenkins_server.id}"
   vpc      = true
@@ -109,10 +93,6 @@ resource "aws_iam_role_policy_attachment" "instance_profile_codedeploy" {
   role       = "${aws_iam_role.instance_profile.name}"
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforAWSCodeDeploy"
 }
-
-
-
-
 
 #---------a bunch of networking nonsence starts here-----0-------
 #instance security group
@@ -178,8 +158,6 @@ resource "aws_security_group" "website"{
 }
 
 
-
-
 resource "aws_security_group" "elb-securitygroup" {
   vpc_id = "${aws_vpc.main.id}"
   name = "elb"
@@ -190,7 +168,6 @@ resource "aws_security_group" "elb-securitygroup" {
       protocol = "-1"
       cidr_blocks = ["0.0.0.0/0"]
   }
-
   ingress {
       from_port = 80
       to_port = 80
