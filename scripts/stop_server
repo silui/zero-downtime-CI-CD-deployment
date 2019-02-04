@@ -1,2 +1,2 @@
-cd /codedeploy-sample/cowork_space
+cd /zero-downtime-CI-CD-deployment/cowork_space
 docker-compose down

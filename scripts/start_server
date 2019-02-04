@@ -1,6 +1,7 @@
-cd /codedeploy-sample
-git submodule update --remote --merge
-cd cowork_space
+cd /zero-downtime-CI-CD-deployments
+git fetch origin master
+git reset --hard FETCH_HEAD
+cd cowork_spaces
 source /etc/environment
 echo $wai
 cp /etc/environment ./.env
