@@ -22,5 +22,5 @@ def test(request,multipler=2):
         p=multiprocessing.Process(target=f,args=(1500,))
         jobs.append(p)
         p.start()
-    return HttpResponse("Hello people from insight!!!  "+doodoo)
+    return HttpResponse("HELLO PEOPLE FROM THE WORLD~~~ "+doodoo)
 
