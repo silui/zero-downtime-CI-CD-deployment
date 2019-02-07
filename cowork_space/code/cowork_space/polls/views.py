@@ -12,7 +12,7 @@ def f(x):
     return new_int
 
 def index(request):
-    return HttpResponse("Fifth code being deployed" + doodoo)
+    return HttpResponse("Sixth code being deployed" + doodoo)
 
 def test(request,multipler=2):
     jobs = []
