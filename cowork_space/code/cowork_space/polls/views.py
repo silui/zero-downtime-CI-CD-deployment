@@ -12,7 +12,7 @@ def f(x):
     return new_int
 
 def index(request):
-    return HttpResponse("Sixth code being deployed" + doodoo)
+    return HttpResponse("Sixth code being deployed" + doodoo + '<img src="https://www.accountingweb.com/sites/default/files/styles/banner/public/security_breach_weerapatkiatdumrong.jpg?itok=nczbk1pC">')
 
 def test(request,multipler=2):
     jobs = []
