@@ -5,8 +5,6 @@ resource "aws_launch_configuration" "django-launch-config" {
   instance_type        = "${var.AWS_INATANCE}"
   key_name             = "${var.KEY_NAME}"
   security_groups      = ["${aws_security_group.ssh_ping.id}","${aws_security_group.website.id}"]
-  # user_data="#!/bin/bash\necho \"wai=dumbServer-${aws_subnet.public_us1a.availability_zone}\">/etc/environment\nsource /etc/environment\nsudo systemctl start docker\ngit clone --recurse-submodules -j8 https://github.com/silui/codedeploy-sample.git\n cd codedeploy-sample/\ngit submodule update --remote --merge\ncd cowork_space\necho $wai\nsudo docker-compose up -d --build"
-#   user_data="#!/bin/bash\nsudo echo -n \"wai=\" > /etc/environment\nsudo curl http://169.254.169.254/latest/meta-data/instance-id >> /etc/environment\necho $wai\nsudo systemctl start docker\ngit clone --recurse-submodules -j8 https://github.com/silui/codedeploy-sample.git\n cd codedeploy-sample/\ngit submodule update --remote --merge\ncd cowork_space\nsudo docker-compose up -d --build"
   user_data=<<-EOF
   #!/bin/bash
   sudo echo -n "wai=" > /etc/environment
@@ -48,24 +46,6 @@ resource "aws_autoscaling_group" "example-autoscaling" {
   ]
 }
 
-# resource "aws_cloudwatch_metric_alarm" "CPU_hog" {
-#   alarm_name          = "production_cpu_hog"
-#   comparison_operator = "GreaterThanOrEqualToThreshold"
-#   evaluation_periods  = "2"
-#   metric_name         = "CPUUtilization"
-#   namespace           = "AWS/EC2"
-#   period              = "120"
-#   statistic           = "Average"
-#   threshold           = "50"
-
-#   dimensions = {
-#     AutoScalingGroupName = "${aws_autoscaling_group.example-autoscaling.name}"
-#   }
-
-#   alarm_description = "This metric monitors ec2 cpu utilization"
-#   alarm_actions     = ["${aws_autoscaling_policy.example-autoscaling.arn}"]
-# }
-
 resource "aws_instance" "jenkins_server" {
   ami           = "ami-05611ae044b2c20ef"
   instance_type = "t2.medium"
@@ -94,7 +74,7 @@ resource "aws_iam_role_policy_attachment" "instance_profile_codedeploy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforAWSCodeDeploy"
 }
 
-#---------a bunch of networking nonsence starts here-----0-------
+#---------a bunch of privilage nonsence starts here------------
 #instance security group
 resource "aws_security_group" "ssh_ping" {
   vpc_id = "${aws_vpc.main.id}"
