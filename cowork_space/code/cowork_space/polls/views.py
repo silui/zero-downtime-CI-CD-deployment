@@ -12,16 +12,15 @@ def f(x):
     return new_int
 
 def index(request):
-    return HttpResponse('
-<!DOCTYPE html>
+    return HttpResponse('''
 <html>
 <h1>Sample E-commerce website</h1>
 <h2>No more 404 demo page</h2>
-<h3>instance id='+ENVAR+'</h3>
+<h3>instance id='''+ENVAR+'''</h3>
 <div>
 <img src="https://www.accountingweb.com/sites/default/files/styles/banner/public/security_breach_weerapatkiatdumrong.jpg?itok=nczbk1pC" style="max-width:100%;">
 </div>
-</html>'
+</html>'''
  )
         
 
