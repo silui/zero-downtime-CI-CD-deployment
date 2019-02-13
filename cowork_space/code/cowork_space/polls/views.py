@@ -18,7 +18,7 @@ def index(request):
 <h2>No more 404 demo page</h2>
 <h3>instance id='''+ENVAR+'''</h3>
 <div>
-<img src="https://www.accountingweb.com/sites/default/files/styles/banner/public/security_breach_weerapatkiatdumrong.jpg?itok=nczbk1pC" style="max-width:100%;">
+<img src="https://www.dailydot.com/wp-content/uploads/534/ff/76995fe1e177a932-2048x1024.jpg" style="max-width:100%;">
 </div>
 </html>'''
  )
